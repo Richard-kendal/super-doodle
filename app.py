@@ -5,13 +5,19 @@ import os
 import re
 import uuid
 import datetime
-import threading
 import telebot
 import requests
 
-# === Глобальная защита от двойного запуска бота ===
+# === Глобальные переменные ===
 bot_running = False
+bot = None
 
+# === Состояние бота — должно быть глобальным для webhook ===
+pending_products = {}  # ← хранит JSON до получения фото
+IMAGE_DIR = "images"
+os.makedirs(IMAGE_DIR, exist_ok=True)
+
+# === Конфигурация ===
 app = Flask(__name__)
 CORS(app)
 
@@ -173,11 +179,11 @@ def api_get_bonuses(user_id):
     count = next((b["count"] for b in bonuses if b["id"] == str(user_id) and b["date"] == today), 0)
     return jsonify({"count": count})
 
-# === Telegram Bot ===
+# === Telegram Bot (Webhook) ===
 def run_telegram_bot():
-    global bot_running
+    global bot, bot_running
     if bot_running:
-        print("⚠️ Бот уже запущен — пропускаем повторный запуск.")
+        print("⚠️ Бот уже настроен — пропускаем повторную настройку.")
         return
 
     BOT_TOKEN = "8437761728:AAFh1QSQamm0HX4vDsvNF3UIRyqFyFK_bVA"
@@ -185,23 +191,18 @@ def run_telegram_bot():
         print("❌ BOT_TOKEN не задан — бот не запущен")
         return
 
-    RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://super-doodle-1.onrender.com")
+    RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://super-doodle-1.onrender.com").rstrip('/')
+    WEBHOOK_URL = f"{RENDER_EXTERNAL_URL}/webhook"
     API_URL = f"{RENDER_EXTERNAL_URL}/api/add-product"
 
-    IMAGE_DIR = "images"
-    os.makedirs(IMAGE_DIR, exist_ok=True)
-
-    AKCII_FILE = "akcii.json"
-    NOVINKI_FILE = "novinki.json"
-
     bot = telebot.TeleBot(BOT_TOKEN)
-    pending_products = {}
 
     def save_to_file(filename, data):
         items = load_json_file(filename)
         items.append(data)
         save_json_file(filename, items)
 
+    # --- Все хендлеры ---
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
         bot.reply_to(message, (
@@ -319,18 +320,36 @@ def run_telegram_bot():
             bot.reply_to(message, f"❌ Ошибка фото: {str(e)}")
             pending_products.pop(chat_id, None)
 
-    print("🟢 Telegram-бот запущен...")
+    # === Установка вебхука ===
     try:
+        bot.remove_webhook()
+        bot.set_webhook(url=WEBHOOK_URL)
+        print(f"✅ Вебхук установлен: {WEBHOOK_URL}")
         bot_running = True
-        bot.polling(none_stop=True)
     except Exception as e:
-        print(f"🔴 Ошибка бота: {e}")
+        print(f"🔴 Ошибка установки вебхука: {e}")
         bot_running = False
 
-# Запуск бота в отдельном потоке
-threading.Thread(target=run_telegram_bot, daemon=True).start()
+# === Webhook endpoint ===
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    global bot
+    if request.method == 'POST' and bot:
+        json_str = request.get_data().decode('UTF-8')
+        update = telebot.types.Update.de_json(json_str)
+        bot.process_new_updates([update])
+        return '', 200
+    return '', 403
 
-# Запуск Flask
+# === Статические файлы (для изображений) ===
+@app.route('/images/<filename>')
+def serve_image(filename):
+    return app.send_static_file(os.path.join('..', IMAGE_DIR, filename))
+
+# === Инициализация и запуск ===
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    # Настройка бота при старте
+    run_telegram_bot()
+    # Запуск Flask
     app.run(host="0.0.0.0", port=port, debug=False)
