@@ -1,0 +1,116 @@
+[
+  {
+    "category": "Одноразовые сигареты",
+    "brand": "Мишки",
+    "name": "150440",
+    "image_url": "https://via.placeholder.com/300?text=Мишки",
+    "flavor": "Клубника",
+    "city": "Северодвинск",
+    "street": "Ленина, аа",
+    "id": "783342872"
+  },
+  {
+    "category": "Тест",
+    "brand": "Бренд",
+    "name": "Название",
+    "flavor": "Вкус",
+    "city": "Город",
+    "street": "Улица",
+    "image_url": "/static/images/02fc461d7118446882de25a6e65b11ed.jpg",
+    "id": "1069513240"
+  },
+  {
+    "category": "Тест",
+    "brand": "Бренд",
+    "name": "Название",
+    "flavor": "Вкус",
+    "city": "Архангельск",
+    "street": "Улица",
+    "image_url": "/static/images/b7ef01732040496aa58eb0a9d315ed73.jpg",
+    "id": "196934016"
+  },
+  {
+    "category": "подики",
+    "brand": "гик вейр",
+    "name": "буст 3",
+    "flavor": "зеленый",
+    "city": "Северодвинск",
+    "street": "Ленина, аа",
+    "price": 5000,
+    "description": "Вкусный и крепкий.",
+    "image_url": "/static/images/86ab67d47fd2412ba0978185dcd153a2.jpg",
+    "id": "4233010954"
+  },
+  {
+    "category": "подики",
+    "brand": "гик вейр",
+    "name": "буст 2",
+    "flavor": "зеленый",
+    "city": "Северодвинск",
+    "street": "Ленина, аа",
+    "price": 5000,
+    "description": "Вкусный и крепкий.",
+    "image_url": "/static/images/13a50bbd0ec549ec91a401c676a784d4.jpg",
+    "id": "2327168620"
+  },
+  {
+    "category": "подики",
+    "brand": "гик вейр",
+    "name": "буст 2",
+    "flavor": "красный",
+    "city": "Северодвинск",
+    "street": "Ленина, аа",
+    "price": 5000,
+    "description": "Вкусный и крепкий.",
+    "image_url": "/static/images/b735678d66144c7d9a9e52022d9df1ba.jpg",
+    "id": "3730830356"
+  },
+  {
+    "category": "подики",
+    "brand": "гик вейр",
+    "name": "буст 2",
+    "flavor": "красный",
+    "city": "Архангельск",
+    "street": "Ленина, аааааа",
+    "price": 5000,
+    "description": "Вкусный и крепкий.",
+    "image_url": "/static/images/1dcb658bdfa846dcae7bb24b9890f7c2.jpg",
+    "id": "474098756"
+  },
+  {
+    "category": "йфя",
+    "brand": "гик вейр",
+    "name": "буст 2",
+    "flavor": "красный",
+    "city": "Архангельск",
+    "street": "Ленина, аааааа",
+    "price": 5000,
+    "description": "Вкусный и крепкий.",
+    "image_url": "/static/images/58e3cef2a84c4e7bbf95e4096cc29845.jpg",
+    "id": "3951363285"
+  },
+  {
+    "category": "йфя",
+    "brand": "гик вейр",
+    "name": "вв",
+    "flavor": "ввй",
+    "city": "Архангельск",
+    "street": "Ленина, а33а",
+    "price": 5000,
+    "description": "Вкусный и крепкий.",
+    "image_url": "/static/images/8d8fccad4e2640aa8521fe7e49a18f80.jpg",
+    "id": "3033937851"
+  },
+  {
+    "category": "подики",
+    "brand": "вупу",
+    "name": "драг",
+    "flavor": "черный",
+    "city": "Архангельск",
+    "street": "Ленина, а33а",
+    "price": 3000,
+    "description": "брутальныйподик.",
+    "image_url": "/static/images/a2bb6bc16dba4f2084ebfc29c13b210f.jpg",
+    "id": "2134890827"
+  }
+]

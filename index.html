@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smoky Bro</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-pattern"></div>
+  <div class="header">
+    <span class="greeting">Добро пожаловать в Smoky Bro, <span id="user-name">Гость</span></span>
+    <span id="user-id" class="user-id"></span>
+  </div>
+  <div class="menu" id="main-menu">
+    <div class="menu-item" id="btn-global-search">Глобальный поиск товаров</div>
+    <div class="menu-item" id="btn-shop-search">Поиск по магазину!</div>
+    <div class="menu-item" id="btn-promo">Акции</div>
+    <div class="menu-item" id="btn-new-products">Новые товары</div>
+    <div class="menu-item" id="btn-bonuses">Бонусы: <span id="bonus-count">0</span></div>
+    <div class="menu-item" id="btn-play">🎮 vapeRunner</div>
+    <div class="menu-item" id="btn-leaderboard">🏆 Таблица лидеров</div>
+  </div>
+  <div id="dynamic-content"></div>
+  <div class="footer">© 2025 Smoky Bro • Все права защищены</div>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+[
+  {
+    "category": "Одноразовые сигареты",
+    "brand": "Мишки",
+    "name": "Мишки Лесные Ягоды 1500",
+    "image_url": "https://via.placeholder.com/300?text=Мишки",
+    "flavor": "Лесная клубника"
+  },
+  {
+    "category": "Одноразовые сигареты",
+    "brand": "Мишки",
+    "name": "1500",
+    "image_url": "https://via.placeholder.com/300?text=Мишки",
+    "flavor": "Лесная клубника"
+  },
+  {
+    "category": "Од",
+    "brand": "М",
+    "name": "1",
+    "flavor": "Клубника",
+    "price": 150,
+    "description": "Вкусный и крепкий.",
+    "image_url": "/static/images/470d4b2808e04bda9a4d153a59f4446d.jpg"
+  }
+]
