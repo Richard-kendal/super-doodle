@@ -12,7 +12,13 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 # Временное хранилище: {chat_id: {type: 'tovar'/'akcia'/'new', data: {...}}}
 pending_products = {}
+WEB_APP_URL = "https://smoky-bro.netlify.app"  # ← ваш Netlify URL
 
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("Открыть Smoky Bro", web_app=WebAppInfo(url=WEB_APP_URL)))
+    bot.send_message(message.chat.id, "Добро пожаловать!", reply_markup=markup)
 # Папка для изображений
 IMAGE_DIR = "images"
 os.makedirs(IMAGE_DIR, exist_ok=True)
