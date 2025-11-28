@@ -213,7 +213,6 @@ import os
 import uuid
 
 def run_telegram_bot():
-    BOT_TOKEN = os.getenv("BOT_TOKEN")
     if not BOT_TOKEN:
         print("❌ BOT_TOKEN не задан — бот не запущен")
         return
