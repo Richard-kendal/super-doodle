@@ -292,6 +292,10 @@ def run_telegram_bot():
             ext = file_info.file_path.split('.')[-1] if '.' in file_info.file_path else 'jpg'
             filename = f"{uuid.uuid4().hex}.{ext}"
             filepath = os.path.join(IMAGE_DIR, filename)
+            
+            # Логируем путь
+            print(f"📸 Сохраняю фото: {filepath}")
+            
             with open(filepath, 'wb') as f:
                 f.write(downloaded_file)
 
@@ -342,10 +346,11 @@ def webhook():
     return '', 403
 
 # === Статические файлы (для изображений) ===
+from flask import send_from_directory
+
 @app.route('/images/<filename>')
 def serve_image(filename):
-    return app.send_static_file(os.path.join('..', IMAGE_DIR, filename))
-
+    return send_from_directory(IMAGE_DIR, filename)
 # === Инициализация и запуск ===
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
