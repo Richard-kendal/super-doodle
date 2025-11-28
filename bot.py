@@ -14,7 +14,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 pending_products = {}
 
 # Папка для изображений
-IMAGE_DIR = "static/images"
+IMAGE_DIR = "images"
 os.makedirs(IMAGE_DIR, exist_ok=True)
 
 AKCII_FILE = "akcii.json"
@@ -141,7 +141,7 @@ def handle_photo(message):
         with open(filepath, 'wb') as f:
             f.write(downloaded_file)
 
-        image_url = f"/static/images/{filename}"
+        image_url = f"/images/{filename}"
 
         prod = pending_products[chat_id]
         product_type = prod['type']
