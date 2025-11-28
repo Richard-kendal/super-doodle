@@ -9,6 +9,9 @@ import threading
 import telebot
 import requests
 
+# === Глобальная защита от двойного запуска бота ===
+bot_running = False
+
 app = Flask(__name__)
 CORS(app)
 
@@ -172,6 +175,11 @@ def api_get_bonuses(user_id):
 
 # === Telegram Bot ===
 def run_telegram_bot():
+    global bot_running
+    if bot_running:
+        print("⚠️ Бот уже запущен — пропускаем повторный запуск.")
+        return
+
     BOT_TOKEN = "8437761728:AAFh1QSQamm0HX4vDsvNF3UIRyqFyFK_bVA"
     if not BOT_TOKEN:
         print("❌ BOT_TOKEN не задан — бот не запущен")
@@ -183,7 +191,6 @@ def run_telegram_bot():
     IMAGE_DIR = "images"
     os.makedirs(IMAGE_DIR, exist_ok=True)
 
-    # Внутренние файлы
     AKCII_FILE = "akcii.json"
     NOVINKI_FILE = "novinki.json"
 
@@ -313,7 +320,12 @@ def run_telegram_bot():
             pending_products.pop(chat_id, None)
 
     print("🟢 Telegram-бот запущен...")
-    bot.polling(none_stop=True)
+    try:
+        bot_running = True
+        bot.polling(none_stop=True)
+    except Exception as e:
+        print(f"🔴 Ошибка бота: {e}")
+        bot_running = False
 
 # Запуск бота в отдельном потоке
 threading.Thread(target=run_telegram_bot, daemon=True).start()
