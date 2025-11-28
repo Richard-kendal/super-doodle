@@ -91,7 +91,7 @@ function goBack() {
 // === API ===
 async function fetchProducts() {
   try {
-    const res = await fetch('http://localhost:5000/api/products');
+    const res = await fetch('https://super-doodle-1.onrender.com/api/products');
     return await res.json();
   } catch (e) {
     alert('Не удалось загрузить товары. Запущен ли сервер?');
@@ -101,7 +101,7 @@ async function fetchProducts() {
 
 async function fetchAkcii() {
   try {
-    const res = await fetch('http://localhost:5000/api/akcii');
+    const res = await fetch('https://super-doodle-1.onrender.com/api/akcii');
     return await res.json();
   } catch (e) {
     alert('Не удалось загрузить акции');
@@ -111,7 +111,7 @@ async function fetchAkcii() {
 
 async function fetchNovinki() {
   try {
-    const res = await fetch('http://localhost:5000/api/novinki');
+    const res = await fetch('https://super-doodle-1.onrender.com/api/novinki');
     return await res.json();
   } catch (e) {
     alert('Не удалось загрузить новые товары');
@@ -122,7 +122,7 @@ async function fetchNovinki() {
 // === Дополнительные API-эндпоинты ===
 async function fetchLeaderboard() {
   try {
-    const res = await fetch('http://localhost:5000/api/leaderboard');
+    const res = await fetch('https://super-doodle-1.onrender.com/api/leaderboard');
     return await res.json();
   } catch (e) {
     console.error('Ошибка загрузки лидерборда:', e);
@@ -133,7 +133,7 @@ async function fetchLeaderboard() {
 async function submitScore(score) {
   if (!currentUserId) return;
   try {
-    await fetch('http://localhost:5000/api/leaderboard', {
+    await fetch('https://super-doodle-1.onrender.com/api/leaderboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -150,7 +150,7 @@ async function submitScore(score) {
 async function fetchBonusCount() {
   if (!currentUserId) return 0;
   try {
-    const res = await fetch(`http://localhost:5000/api/bonuses/${currentUserId}`);
+    const res = await fetch(`https://super-doodle-1.onrender.com/api/bonuses/${currentUserId}`);
     const data = await res.json();
     return data.count || 0;
   } catch (e) {
