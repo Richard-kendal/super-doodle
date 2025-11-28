@@ -9,6 +9,8 @@ import threading
 import telebot
 import os
 
+
+BOT_TOKEN = "8437761728:AAFh1QSQamm0HX4vDsvNF3UIRyqFyFK_bVA"
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if BOT_TOKEN:
     bot = telebot.TeleBot(BOT_TOKEN)
@@ -203,6 +205,176 @@ def api_get_bonuses(user_id):
             break
     return jsonify({"count": count})
 
+# === Telegram Bot (встроенный в Flask) ===
+import threading
+import telebot
+import requests
+import json
+import os
+import uuid
+
+def run_telegram_bot():
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        print("❌ BOT_TOKEN не задан — бот не запущен")
+        return
+
+    # Получаем URL текущего сервиса на Render (или localhost в dev)
+    RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://super-doodle-1.onrender.com")
+    API_URL = f"{RENDER_EXTERNAL_URL}/api/add-product"
+
+    IMAGE_DIR = "images"
+    os.makedirs(IMAGE_DIR, exist_ok=True)
+
+    AKCII_FILE = "akcii.json"
+    NOVINKI_FILE = "novinki.json"
+
+    bot = telebot.TeleBot(BOT_TOKEN)
+
+    # Временное хранилище: {chat_id: {type, data}}
+    pending_products = {}
+
+    def save_to_file(filename, data):
+        items = []
+        if os.path.exists(filename):
+            try:
+                with open(filename, "r", encoding="utf-8") as f:
+                    items = json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass
+        items.append(data)
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(items, f, ensure_ascii=False, indent=2)
+
+    @bot.message_handler(commands=['start', 'help'])
+    def send_welcome(message):
+        bot.reply_to(message, (
+            "📦 Используйте:\n"
+            "/tovar — добавить товар (сначала JSON без фото, потом фото)\n"
+            "/akcia — добавить акцию\n"
+            "/new — добавить новый товар\n"
+            "/example — пример формата"
+        ))
+
+    @bot.message_handler(commands=['example'])
+    def send_example(message):
+        example = {
+            "category": "Одноразовые сигареты",
+            "brand": "Мишки",
+            "name": "150440",
+            "flavor": "Клубника",
+            "city": "Северодвинск",   # ← только для /tovar
+            "street": "Ленина, аа",   # ← только для /tovar
+            "price": 150,
+            "description": "Вкусный и крепкий."
+        }
+        bot.send_message(
+            message.chat.id,
+            "```json\n"
+            + json.dumps(example, ensure_ascii=False, indent=2)
+            + "\n```\n⚠️ Не включайте `image_url` — его заменит фото!\n"
+            "Для /akcia и /new уберите `city` и `street`.",
+            parse_mode="Markdown"
+        )
+
+    # === Команды ===
+    @bot.message_handler(commands=['tovar'])
+    def handle_tovar(message):
+        bot.reply_to(message, "Отправьте JSON с товаром (БЕЗ image_url):\n"
+                              "Обязательные поля: category, brand, name, flavor, price, description, city, street")
+
+    @bot.message_handler(commands=['akcia'])
+    def handle_akcia(message):
+        bot.reply_to(message, "Отправьте JSON для акции (БЕЗ image_url):\n"
+                              "Поля: category, brand, name, flavor, price, description")
+
+    @bot.message_handler(commands=['new'])
+    def handle_new(message):
+        bot.reply_to(message, "Отправьте JSON для нового товара (БЕЗ image_url):\n"
+                              "Поля: category, brand, name, flavor, price, description")
+
+    # === Приём JSON ===
+    def _receive_product_json(message, product_type):
+        try:
+            data = json.loads(message.text)
+            required = ["category", "brand", "name", "flavor", "price", "description"]
+            if product_type == 'tovar':
+                required.extend(["city", "street"])
+            if not all(k in data for k in required):
+                raise ValueError("Не хватает полей: " + ", ".join(required))
+            if "image_url" in data:
+                bot.reply_to(message, "❌ Уберите поле `image_url` из JSON!")
+                return
+            if product_type == 'tovar':
+                data["street"] = data["street"].strip()
+            chat_id = message.chat.id
+            pending_products[chat_id] = {'type': product_type, 'data': data}
+            bot.reply_to(message, "✅ JSON принят. Теперь отправьте фото.")
+        except json.JSONDecodeError:
+            bot.reply_to(message, "❌ Неверный JSON. Используйте /example")
+        except Exception as e:
+            bot.reply_to(message, f"❌ Ошибка: {str(e)}")
+
+    @bot.message_handler(func=lambda m: m.reply_to_message and "Отправьте JSON с товаром" in m.reply_to_message.text)
+    def receive_tovar_json(message):
+        _receive_product_json(message, 'tovar')
+
+    @bot.message_handler(func=lambda m: m.reply_to_message and "Отправьте JSON для акции" in m.reply_to_message.text)
+    def receive_akcia_json(message):
+        _receive_product_json(message, 'akcia')
+
+    @bot.message_handler(func=lambda m: m.reply_to_message and "Отправьте JSON для нового товара" in m.reply_to_message.text)
+    def receive_new_json(message):
+        _receive_product_json(message, 'new')
+
+    # === Приём фото ===
+    @bot.message_handler(content_types=['photo'])
+    def handle_photo(message):
+        chat_id = message.chat.id
+        if chat_id not in pending_products:
+            return
+        try:
+            file_id = message.photo[-1].file_id
+            file_info = bot.get_file(file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+            ext = file_info.file_path.split('.')[-1] if '.' in file_info.file_path else 'jpg'
+            filename = f"{uuid.uuid4().hex}.{ext}"
+            filepath = os.path.join(IMAGE_DIR, filename)
+            os.makedirs(IMAGE_DIR, exist_ok=True)
+            with open(filepath, 'wb') as f:
+                f.write(downloaded_file)
+            image_url = f"/images/{filename}"
+            prod = pending_products[chat_id]
+            product_data = prod['data']
+            product_data["image_url"] = image_url
+            product_type = prod['type']
+
+            if product_type == 'tovar':
+                resp = requests.post(API_URL, json=product_data, timeout=10)
+                if resp.status_code == 200:
+                    bot.reply_to(message, "✅ Товар добавлен!")
+                elif resp.status_code == 409:
+                    bot.reply_to(message, "⚠️ Такой товар уже есть.")
+                else:
+                    bot.reply_to(message, f"❌ Ошибка сервера: {resp.status_code} – {resp.text}")
+            else:
+                if product_type == 'akcia':
+                    save_to_file(AKCII_FILE, product_data)
+                elif product_type == 'new':
+                    save_to_file(NOVINKI_FILE, product_data)
+                bot.reply_to(message, f"✅ { 'Акция' if product_type == 'akcia' else 'Новинка' } добавлена!")
+            del pending_products[chat_id]
+        except Exception as e:
+            bot.reply_to(message, f"❌ Ошибка фото: {str(e)}")
+            pending_products.pop(chat_id, None)
+
+    print("🟢 Запуск Telegram-бота...")
+    bot.polling(none_stop=True)
+
+# Запуск бота в отдельном потоке
+threading.Thread(target=run_telegram_bot, daemon=True).start()
+
 # === Запуск ===
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+if __namename__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
