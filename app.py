@@ -7,26 +7,8 @@ import uuid
 import datetime
 import threading
 import telebot
-import os
+import requests
 
-
-BOT_TOKEN = "8437761728:AAFh1QSQamm0HX4vDsvNF3UIRyqFyFK_bVA"
-if BOT_TOKEN:
-    bot = telebot.TeleBot(BOT_TOKEN)
-
-    # Скопируйте сюда логику из bot.py (или импортируйте)
-    # Например:
-    @bot.message_handler(commands=['start'])
-    def send_welcome(message):
-        bot.reply_to(message, "Привет! Используйте /tovar, /akcia, /new")
-
-    # ... остальные обработчики
-
-    def run_bot():
-        bot.polling(none_stop=True)
-
-    # Запуск бота в отдельном потоке
-    threading.Thread(target=run_bot, daemon=True).start()
 app = Flask(__name__)
 CORS(app)
 
@@ -67,7 +49,7 @@ def load_products():
 def save_products(data):
     save_json_file(DATA_FILE, data)
 
-# === Эндпоинты каталога ===
+# === API endpoints ===
 @app.route("/api/products", methods=["GET"])
 def get_products():
     return jsonify(load_products())
@@ -117,7 +99,7 @@ def add_product():
     save_products(products)
     return {"status": "ok", "id": product["id"]}
 
-# === Лидерборд и бонусы ===
+# === Leaderboard & Bonuses ===
 def load_leaderboard():
     return load_json_file(LEADERBOARD_FILE)
 
@@ -151,19 +133,13 @@ def api_submit_score():
 
     today = datetime.date.today().isoformat()
 
-    # --- Обновление бонусов ---
     bonuses = load_bonuses()
-    user_bonus = None
-    for b in bonuses:
-        if b["id"] == user_id:
-            user_bonus = b
-            break
+    user_bonus = next((b for b in bonuses if b["id"] == user_id), None)
 
     if user_bonus is None:
         user_bonus = {"id": user_id, "date": today, "count": 0}
         bonuses.append(user_bonus)
-
-    if user_bonus["date"] != today:
+    elif user_bonus["date"] != today:
         user_bonus["date"] = today
         user_bonus["count"] = 0
 
@@ -173,13 +149,8 @@ def api_submit_score():
 
     save_bonuses(bonuses)
 
-    # --- Обновление лидерборда ---
     board = load_leaderboard()
-    existing = None
-    for p in board:
-        if p["id"] == user_id:
-            existing = p
-            break
+    existing = next((p for p in board if p["id"] == user_id), None)
 
     if existing:
         if score > existing["score"]:
@@ -190,59 +161,39 @@ def api_submit_score():
 
     board.sort(key=lambda x: x["score"], reverse=True)
     save_leaderboard(board[:100])
-
     return jsonify({"status": "ok"})
 
 @app.route("/api/bonuses/<user_id>", methods=["GET"])
 def api_get_bonuses(user_id):
     bonuses = load_bonuses()
     today = datetime.date.today().isoformat()
-    count = 0
-    for b in bonuses:
-        if b["id"] == str(user_id) and b["date"] == today:
-            count = b.get("count", 0)
-            break
+    count = next((b["count"] for b in bonuses if b["id"] == str(user_id) and b["date"] == today), 0)
     return jsonify({"count": count})
 
-# === Telegram Bot (встроенный в Flask) ===
-import threading
-import telebot
-import requests
-import json
-import os
-import uuid
-
+# === Telegram Bot ===
 def run_telegram_bot():
+    BOT_TOKEN = "8437761728:AAFh1QSQamm0HX4vDsvNF3UIRyqFyFK_bVA"
     if not BOT_TOKEN:
         print("❌ BOT_TOKEN не задан — бот не запущен")
         return
 
-    # Получаем URL текущего сервиса на Render (или localhost в dev)
     RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://super-doodle-1.onrender.com")
     API_URL = f"{RENDER_EXTERNAL_URL}/api/add-product"
 
     IMAGE_DIR = "images"
     os.makedirs(IMAGE_DIR, exist_ok=True)
 
+    # Внутренние файлы
     AKCII_FILE = "akcii.json"
     NOVINKI_FILE = "novinki.json"
 
     bot = telebot.TeleBot(BOT_TOKEN)
-
-    # Временное хранилище: {chat_id: {type, data}}
     pending_products = {}
 
     def save_to_file(filename, data):
-        items = []
-        if os.path.exists(filename):
-            try:
-                with open(filename, "r", encoding="utf-8") as f:
-                    items = json.load(f)
-            except (json.JSONDecodeError, IOError):
-                pass
+        items = load_json_file(filename)
         items.append(data)
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(items, f, ensure_ascii=False, indent=2)
+        save_json_file(filename, items)
 
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
@@ -261,25 +212,23 @@ def run_telegram_bot():
             "brand": "Мишки",
             "name": "150440",
             "flavor": "Клубника",
-            "city": "Северодвинск",   # ← только для /tovar
-            "street": "Ленина, аа",   # ← только для /tovar
+            "city": "Северодвинск",
+            "street": "Ленина, аа",
             "price": 150,
             "description": "Вкусный и крепкий."
         }
         bot.send_message(
             message.chat.id,
-            "```json\n"
-            + json.dumps(example, ensure_ascii=False, indent=2)
-            + "\n```\n⚠️ Не включайте `image_url` — его заменит фото!\n"
+            "```json\n" + json.dumps(example, ensure_ascii=False, indent=2) + "\n```\n"
+            "⚠️ Не включайте `image_url` — его заменит фото!\n"
             "Для /akcia и /new уберите `city` и `street`.",
             parse_mode="Markdown"
         )
 
-    # === Команды ===
     @bot.message_handler(commands=['tovar'])
     def handle_tovar(message):
         bot.reply_to(message, "Отправьте JSON с товаром (БЕЗ image_url):\n"
-                              "Обязательные поля: category, brand, name, flavor, price, description, city, street")
+                              "Поля: category, brand, name, flavor, price, description, city, street")
 
     @bot.message_handler(commands=['akcia'])
     def handle_akcia(message):
@@ -291,22 +240,20 @@ def run_telegram_bot():
         bot.reply_to(message, "Отправьте JSON для нового товара (БЕЗ image_url):\n"
                               "Поля: category, brand, name, flavor, price, description")
 
-    # === Приём JSON ===
     def _receive_product_json(message, product_type):
         try:
             data = json.loads(message.text)
             required = ["category", "brand", "name", "flavor", "price", "description"]
             if product_type == 'tovar':
-                required.extend(["city", "street"])
+                required += ["city", "street"]
             if not all(k in data for k in required):
                 raise ValueError("Не хватает полей: " + ", ".join(required))
             if "image_url" in data:
-                bot.reply_to(message, "❌ Уберите поле `image_url` из JSON!")
+                bot.reply_to(message, "❌ Уберите `image_url` из JSON!")
                 return
             if product_type == 'tovar':
                 data["street"] = data["street"].strip()
-            chat_id = message.chat.id
-            pending_products[chat_id] = {'type': product_type, 'data': data}
+            pending_products[message.chat.id] = {'type': product_type, 'data': data}
             bot.reply_to(message, "✅ JSON принят. Теперь отправьте фото.")
         except json.JSONDecodeError:
             bot.reply_to(message, "❌ Неверный JSON. Используйте /example")
@@ -325,7 +272,6 @@ def run_telegram_bot():
     def receive_new_json(message):
         _receive_product_json(message, 'new')
 
-    # === Приём фото ===
     @bot.message_handler(content_types=['photo'])
     def handle_photo(message):
         chat_id = message.chat.id
@@ -338,9 +284,9 @@ def run_telegram_bot():
             ext = file_info.file_path.split('.')[-1] if '.' in file_info.file_path else 'jpg'
             filename = f"{uuid.uuid4().hex}.{ext}"
             filepath = os.path.join(IMAGE_DIR, filename)
-            os.makedirs(IMAGE_DIR, exist_ok=True)
             with open(filepath, 'wb') as f:
                 f.write(downloaded_file)
+
             image_url = f"/images/{filename}"
             prod = pending_products[chat_id]
             product_data = prod['data']
@@ -354,25 +300,25 @@ def run_telegram_bot():
                 elif resp.status_code == 409:
                     bot.reply_to(message, "⚠️ Такой товар уже есть.")
                 else:
-                    bot.reply_to(message, f"❌ Ошибка сервера: {resp.status_code} – {resp.text}")
+                    bot.reply_to(message, f"❌ Ошибка сервера: {resp.status_code}")
             else:
                 if product_type == 'akcia':
                     save_to_file(AKCII_FILE, product_data)
                 elif product_type == 'new':
                     save_to_file(NOVINKI_FILE, product_data)
-                bot.reply_to(message, f"✅ { 'Акция' if product_type == 'akcia' else 'Новинка' } добавлена!")
+                bot.reply_to(message, f"✅ {'Акция' if product_type == 'akcia' else 'Новинка'} добавлена!")
             del pending_products[chat_id]
         except Exception as e:
             bot.reply_to(message, f"❌ Ошибка фото: {str(e)}")
             pending_products.pop(chat_id, None)
 
-    print("🟢 Запуск Telegram-бота...")
+    print("🟢 Telegram-бот запущен...")
     bot.polling(none_stop=True)
 
 # Запуск бота в отдельном потоке
 threading.Thread(target=run_telegram_bot, daemon=True).start()
 
-# === Запуск ===
+# Запуск Flask
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
