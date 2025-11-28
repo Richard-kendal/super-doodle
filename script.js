@@ -50,9 +50,10 @@ let score = 0;
 let gameSpeed = 2;
 let spawnInterval = 60;
 let frameCount = 0;
-let keys = {};
 let walkPhase = 0;
 let smokeParticles = [];
+let touchUp = false; 
+let touchDown = false;
 
 function resetGameAssets() {
   smokeParticles = [];
@@ -555,16 +556,94 @@ function startGame() {
   clearContent();
   document.getElementById('main-menu').style.display = 'none';
 
+  // Убедимся, что старый холст и кнопки удалены (защита от дублирования)
+  let existingCanvas = document.getElementById('game-canvas');
+  let existingControls = document.getElementById('game-controls');
+  if (existingCanvas) existingCanvas.remove();
+  if (existingControls) existingControls.remove();
+
+  // --- Холст игры ---
   gameCanvas = document.createElement('canvas');
-  gameCanvas.width = Math.min(window.innerWidth - 40, 500);
-  gameCanvas.height = Math.min(window.innerHeight - 200, 600);
+  gameCanvas.id = 'game-canvas';
+  const maxWidth = Math.min(window.innerWidth - 20, 500);
+  const maxHeight = Math.min(window.innerHeight * 0.6, 500); // не больше 60% высоты экрана
+  gameCanvas.width = maxWidth;
+  gameCanvas.height = maxHeight;
   gameCanvas.style.border = '2px solid #5a3d7c';
   gameCanvas.style.borderRadius = '16px';
   gameCanvas.style.display = 'block';
   gameCanvas.style.margin = '0 auto';
-  gameCanvas.tabIndex = 1;
+  gameCanvas.tabIndex = 0;
   document.getElementById('dynamic-content').appendChild(gameCanvas);
 
+  // --- Кнопки управления ---
+  const controlsDiv = document.createElement('div');
+  controlsDiv.id = 'game-controls';
+  controlsDiv.style.display = 'flex';
+  controlsDiv.style.justifyContent = 'center';
+  controlsDiv.style.gap = '20px';
+  controlsDiv.style.marginTop = '16px';
+  controlsDiv.style.userSelect = 'none';
+  controlsDiv.style.webkitTapHighlightColor = 'transparent';
+
+  // Размер кнопок адаптивный
+  const btnSize = Math.min(70, window.innerWidth * 0.15); // не больше 15% ширины экрана
+
+  const upBtn = document.createElement('button');
+  upBtn.textContent = '↑';
+  upBtn.style.width = `${btnSize}px`;
+  upBtn.style.height = `${btnSize}px`;
+  upBtn.style.fontSize = `${btnSize * 0.4}px`;
+  upBtn.style.background = 'rgba(90, 60, 120, 0.85)';
+  upBtn.style.color = 'white';
+  upBtn.style.border = 'none';
+  upBtn.style.borderRadius = '50%';
+  upBtn.style.cursor = 'pointer';
+  upBtn.style.outline = 'none';
+  upBtn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
+
+  const downBtn = document.createElement('button');
+  downBtn.textContent = '↓';
+  downBtn.style.width = `${btnSize}px`;
+  downBtn.style.height = `${btnSize}px`;
+  downBtn.style.fontSize = `${btnSize * 0.4}px`;
+  downBtn.style.background = 'rgba(90, 60, 120, 0.85)';
+  downBtn.style.color = 'white';
+  downBtn.style.border = 'none';
+  downBtn.style.borderRadius = '50%';
+  downBtn.style.cursor = 'pointer';
+  downBtn.style.outline = 'none';
+  downBtn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
+
+  upBtn.classList.add('mobile-control');
+  downBtn.classList.add('mobile-control');
+
+  // Сброс состояния
+  touchUp = false;
+  touchDown = false;
+
+  // Обработчики (работают и на мобильных, и на десктопах)
+  const setTouchUp = (state) => { touchUp = state; };
+  const setTouchDown = (state) => { touchDown = state; };
+
+  // Функция для добавления всех обработчиков
+  const attachHandlers = (el, onDown, onUp) => {
+    el.addEventListener('touchstart', (e) => { e.preventDefault(); onDown(true); });
+    el.addEventListener('touchend', () => onDown(false));
+    el.addEventListener('touchcancel', () => onDown(false));
+    el.addEventListener('mousedown', () => onUp(true));
+    el.addEventListener('mouseup', () => onUp(false));
+    el.addEventListener('mouseleave', () => onUp(false));
+  };
+
+  attachHandlers(upBtn, setTouchUp, setTouchUp);
+  attachHandlers(downBtn, setTouchDown, setTouchDown);
+
+  controlsDiv.appendChild(upBtn);
+  controlsDiv.appendChild(downBtn);
+  document.getElementById('dynamic-content').appendChild(controlsDiv);
+
+  // --- Инициализация игровых переменных ---
   gameCtx = gameCanvas.getContext('2d', { alpha: false });
   gameRunning = true;
 
@@ -574,14 +653,8 @@ function startGame() {
   gameSpeed = 2;
   spawnInterval = 60;
   frameCount = 0;
-  keys = {};
 
   resetGameAssets();
-
-  window.addEventListener('keydown', e => keys[e.key] = true);
-  window.addEventListener('keyup', e => keys[e.key] = false);
-  gameCanvas.focus();
-
   gameLoop();
 }
 
@@ -597,8 +670,9 @@ function updateGame() {
   walkPhase = (walkPhase + 0.3) % (Math.PI * 2);
 
   // Управление игроком
-  if (keys['ArrowUp'] || keys['w'] || keys['W']) playerY -= 6;
-  if (keys['ArrowDown'] || keys['s'] || keys['S']) playerY += 6;
+// Управление игроком (мобильные + десктоп)
+if (touchUp) playerY -= 6;
+if (touchDown) playerY += 6;
   playerY = Math.max(0, Math.min(gameCanvas.height - 80, playerY));
 
   // Анимация курения
