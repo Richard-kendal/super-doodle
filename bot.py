@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 BOT_TOKEN = "8437761728:AAFh1QSQamm0HX4vDsvNF3UIRyqFyFK_bVA"
-API_URL = "http://127.0.0.1:5000/api/add-product"
+API_URL = "https://super-doodle-1.onrender.com/api/add-product"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
