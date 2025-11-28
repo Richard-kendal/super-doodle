@@ -11,7 +11,6 @@ import os
 
 
 BOT_TOKEN = "8437761728:AAFh1QSQamm0HX4vDsvNF3UIRyqFyFK_bVA"
-BOT_TOKEN = os.getenv("BOT_TOKEN")
 if BOT_TOKEN:
     bot = telebot.TeleBot(BOT_TOKEN)
 
